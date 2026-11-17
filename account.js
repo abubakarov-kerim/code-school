@@ -21,15 +21,17 @@
     const token=++generation;
     const user=session?.user||null;
     const changed=loadedUser!==(user?.id||null);
+    if(changed)state.profile=null;
     state.user=user;state.error='';
     if(event==='PASSWORD_RECOVERY')state.recovery=true;
-    if(!user){state.profile=null;loadedUser=null;state.ready=true;state.recovery=false;announce();return;}
+    if(!user){window.SchoolLearning?.clear();state.profile=null;loadedUser=null;state.ready=true;state.recovery=false;announce();return;}
     if(!changed&&state.ready&&event!=='PASSWORD_RECOVERY')return;
     state.ready=false;announce();
     try{
       const {data,error}=await client.from('school_profiles').select('full_name,about,avatar_data').eq('id',user.id).maybeSingle();
       if(error)throw error;if(token!==generation)return;
       state.profile=data?{name:data.full_name,about:data.about,avatar:data.avatar_data}:{name:String(user.user_metadata?.full_name||'').slice(0,100),about:'',avatar:''};
+      await window.SchoolLearning?.load(user.id);if(token!==generation)return;
       loadedUser=user.id;
     }catch(error){if(token!==generation)return;state.profile=null;state.error=fail(error);}
     if(token===generation){state.ready=true;announce();}
@@ -38,17 +40,20 @@
     if(!state.ready)return '<div class="container page"><div class="panel stack"><h1 class="page-title">Личный кабинет</h1><p role="status">Подключаем твой аккаунт…</p></div></div>';
     if(state.error)return `<div class="container page"><div class="panel stack"><h1 class="page-title">Связь с аккаунтом</h1><p role="alert">${escape(state.error)}</p><button class="button" id="account-retry">Повторить подключение</button><button class="button secondary" id="account-signout">Выйти из аккаунта</button></div></div>`;
     const recovery=state.recovery;
-    return `<div class="container page account-page"><a class="crumb" href="index.html">← Главная</a><h1 class="page-title">${recovery?'Новый пароль':'Вход в школу'}</h1><p class="lead">${recovery?'Задай новый пароль для своего аккаунта.':'Один профиль на телефоне и компьютере.'}</p><div class="notice">Пробное подключение Supabase. Используй тестовое имя и не добавляй личные сведения. Сейчас в облаке сохраняется профиль, учебный прогресс пока остаётся на устройстве.</div><form class="panel stack account-form" id="account-form"><div class="account-tabs" role="group" aria-label="Действие с аккаунтом">${recovery?'':'<button class="filter active" type="button" data-auth-mode="login">Войти</button><button class="filter" type="button" data-auth-mode="signup">Регистрация</button><button class="filter" type="button" data-auth-mode="reset">Забыли пароль?</button>'}</div><label id="account-name-label" hidden>Фамилия и имя, тестовые<input id="account-name" maxlength="100" autocomplete="name" placeholder="Тестов Тест"></label><label id="account-email-label" ${recovery?'hidden':''}>Почта<input type="email" id="account-email" autocomplete="email" maxlength="254" ${recovery?'':'required'}></label><label id="account-password-label">Пароль<input id="account-password" type="password" autocomplete="${recovery?'new-password':'current-password'}" minlength="${recovery?'12':'1'}" maxlength="128" required></label><p class="muted" id="account-password-hint" hidden>Минимум 12 символов. Не используй пароль от других сервисов.</p><p class="muted" id="account-mail-hint" hidden>На бесплатном тестовом проекте отправка писем пока ограничена адресами участников Supabase. Подтверждение и восстановление почты требуют настройки отправителя.</p><button class="button" id="account-submit" type="submit">${recovery?'Сохранить пароль':'Войти'}</button><p class="account-feedback" id="account-feedback" role="status" aria-live="polite"></p></form></div>`;
+    return `<div class="container page account-page"><a class="crumb" href="index.html">← Главная</a><h1 class="page-title">${recovery?'Новый пароль':'Вход в школу'}</h1><p class="lead">${recovery?'Задай новый пароль для своего аккаунта.':'Один профиль на телефоне и компьютере.'}</p><div class="notice">Пробное подключение Supabase. Используй тестовое имя и не добавляй личные сведения. В облаке сохраняются профиль и учебный прогресс. Код, проекты и заметки пока остаются на устройстве.</div><form class="panel stack account-form" id="account-form"><div class="account-tabs" role="group" aria-label="Действие с аккаунтом">${recovery?'':'<button class="filter active" type="button" data-auth-mode="login">Войти</button><button class="filter" type="button" data-auth-mode="signup">Регистрация</button><button class="filter" type="button" data-auth-mode="reset">Забыли пароль?</button>'}</div><label id="account-name-label" hidden>Фамилия и имя, тестовые<input id="account-name" maxlength="100" autocomplete="name" placeholder="Тестов Тест"></label><label id="account-email-label" ${recovery?'hidden':''}>Почта<input type="email" id="account-email" autocomplete="email" maxlength="254" ${recovery?'':'required'}></label><label id="account-password-label">Пароль<input id="account-password" aria-label="Пароль" type="password" autocomplete="${recovery?'new-password':'current-password'}" minlength="${recovery?'12':'1'}" maxlength="128" required><button type="button" class="password-eye" id="account-password-toggle" aria-label="Показать пароль" aria-controls="account-password" aria-pressed="false"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path class="eye-strike" d="m4 4 16 16"/></svg></button></label><p class="muted" id="account-password-hint" hidden>Минимум 12 символов. Не используй пароль от других сервисов.</p><p class="muted" id="account-mail-hint" hidden>На бесплатном тестовом проекте отправка писем пока ограничена адресами участников Supabase. Подтверждение и восстановление почты требуют настройки отправителя.</p><button class="button" id="account-submit" type="submit">${recovery?'Сохранить пароль':'Войти'}</button><p class="account-feedback" id="account-feedback" role="status" aria-live="polite"></p></form></div>`;
   }
   function bind(){
     document.getElementById('account-retry')?.addEventListener('click',()=>{loadedUser=null;boot();});
-    document.getElementById('account-signout')?.addEventListener('click',async event=>{event.currentTarget.disabled=true;try{await signout();}catch{event.currentTarget.disabled=false;}});
+    document.getElementById('account-signout')?.addEventListener('click',async event=>{const button=event.currentTarget;button.disabled=true;try{await signout();}catch(error){button.disabled=false;const feedback=document.getElementById('account-feedback');if(feedback)feedback.textContent=fail(error);else if(typeof toast==='function')toast(fail(error));}});
     const form=document.getElementById('account-form');if(!form)return;
     let mode=state.recovery?'recovery':'login',busy=false;
     const feedback=document.getElementById('account-feedback');
     const email=document.getElementById('account-email'),password=document.getElementById('account-password');
+    const eye=document.getElementById('account-password-toggle');
+    const hidePassword=()=>{password.type='password';eye.setAttribute('aria-pressed','false');eye.setAttribute('aria-label','Показать пароль');};
+    eye.addEventListener('click',()=>{const show=password.type==='password';password.type=show?'text':'password';eye.setAttribute('aria-pressed',String(show));eye.setAttribute('aria-label',show?'Скрыть пароль':'Показать пароль');password.focus({preventScroll:true});});
     form.querySelectorAll('[data-auth-mode]').forEach(button=>button.addEventListener('click',()=>{
-      if(busy)return;mode=button.dataset.authMode;feedback.textContent='';
+      if(busy)return;hidePassword();mode=button.dataset.authMode;feedback.textContent='';
       form.querySelectorAll('[data-auth-mode]').forEach(b=>b.classList.toggle('active',b===button));
       document.getElementById('account-name-label').hidden=mode!=='signup';
       document.getElementById('account-name').required=mode==='signup';
@@ -60,7 +65,7 @@
       event.preventDefault();if(busy||!client)return;
       const name=document.getElementById('account-name').value.trim();
       if(mode==='signup'&&name.split(/\s+/).length<2){feedback.textContent='Укажи тестовые фамилию и имя.';return;}
-      busy=true;const buttons=[...form.querySelectorAll('button')];buttons.forEach(b=>b.disabled=true);feedback.textContent='Подключаемся…';
+      hidePassword();busy=true;const buttons=[...form.querySelectorAll('button')];buttons.forEach(b=>b.disabled=true);feedback.textContent='Подключаемся…';
       try{
         const redirect=new URL('index.html?view=profile',location.href).href;
         if(mode==='login'){
@@ -101,6 +106,6 @@
       const {data,error}=await client.auth.getSession();if(error)throw error;await load(data.session,'INITIAL_SESSION');
     }catch(error){state.ready=true;state.error=fail(error);announce();}
   }
-  window.SchoolAccount={state,panel,bind,saveProfile,signout,errorMessage:fail,boot};
+  window.SchoolAccount={state,panel,bind,saveProfile,signout,errorMessage:fail,boot,getClient:()=>client};
   boot();
 })();
