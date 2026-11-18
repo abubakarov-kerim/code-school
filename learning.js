@@ -28,7 +28,7 @@
       if(!(enrollments.data||[]).length&&!read(uid,'learning-seeded',false)&&Array.isArray(local)){for(const id of local)if(ids.has(id)){changes[id]=true;enrolled.add(id);}if(!write(uid,'sync-enroll',changes))throw Error('Local storage unavailable');}
       for(const [id,on]of Object.entries(changes))on?enrolled.add(id):enrolled.delete(id);
       if(!write(uid,'enrolled',[...enrolled])||!write(uid,'learning-seeded',true))throw Error('Local storage unavailable');
-      state.status='synced';paint();schedule();
+      state.status='synced';paint();if(window.SchoolAccount?.state.ready)window.dispatchEvent(new CustomEvent('school-learning-loaded'));schedule();
     }catch{if(epoch===state.epoch){state.status='error';paint();}}
   }
   function changed(entries,previous){
